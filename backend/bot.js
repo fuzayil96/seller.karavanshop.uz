@@ -44,10 +44,15 @@ function setupBot(token) {
     }
 
     if (user && user.status === "approved") {
-      const baseUrl = process.env.WEBAPP_URL || "https://example.com";
-      const webAppUrl = baseUrl.replace(/\/$/, "") + "?t=" + Date.now(); // cache buster
+      let baseUrl = process.env.WEBAPP_URL || "https://example.com";
+      if (!/^https?:\/\//i.test(baseUrl)) {
+        baseUrl = "https://" + baseUrl;
+      }
+      if (!baseUrl.endsWith("/")) {
+        baseUrl += "/";
+      }
       const keyboard = new Keyboard()
-        .webApp("📊 Mening Panelim", webAppUrl)
+        .webApp("📊 Mening Panelim", baseUrl)
         .resized();
       return ctx.reply(
         "Xush kelibsiz! Quyidagi qadalgan tugma orqali panelingizga kiring:",
