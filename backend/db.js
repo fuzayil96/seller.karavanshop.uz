@@ -1,7 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'db.json');
+const localDbPath = path.join(__dirname, 'db.json');
+const dbPath = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, 'db.json') : localDbPath;
+
+// Agar Railway'da Volume ulangan bo'lsa va hali db.json yaratilmagan bo'lsa, local ma'lumotlarni nusxalaymiz
+if (process.env.DATA_DIR && !fs.existsSync(dbPath) && fs.existsSync(localDbPath)) {
+  try {
+    fs.copyFileSync(localDbPath, dbPath);
+    console.log("Local db.json ma'lumotlari Volume'ga muvaffaqiyatli ko'chirildi!");
+  } catch (err) {
+    console.error("Ma'lumotlarni nusxalashda xatolik:", err);
+  }
+}
 
 const defaultDb = {
   users: [],
