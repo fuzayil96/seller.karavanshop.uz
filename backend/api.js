@@ -109,9 +109,15 @@ router.post('/admin/users/:telegramId', verifyAdmin, async (req, res) => {
     const bot = getBot();
     if (bot) {
       try {
-        const webAppUrl = process.env.WEBAPP_URL || 'https://example.com';
+        let baseUrl = process.env.WEBAPP_URL || 'https://example.com';
+        if (!/^https?:\/\//i.test(baseUrl)) {
+          baseUrl = 'https://' + baseUrl;
+        }
+        if (!baseUrl.endsWith('/')) {
+          baseUrl += '/';
+        }
         const { Keyboard } = require('grammy');
-        const keyboard = new Keyboard().webApp("📊 Mening Panelim", webAppUrl.replace(/\/$/, '') + "?t=" + Date.now()).resized();
+        const keyboard = new Keyboard().webApp("📊 Mening Panelim", baseUrl).resized();
         await bot.api.sendMessage(telegramId, "Tasdiqlandi! Siz endi botdan va Web App dan to'liq foydalanishingiz mumkin.", {
           reply_markup: keyboard
         });
