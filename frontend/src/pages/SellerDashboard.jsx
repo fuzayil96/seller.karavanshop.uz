@@ -169,28 +169,13 @@ const SellerDashboard = () => {
   if (!telegramId && !error) {
     return (
       <div className="flex items-center justify-center h-screen p-4 text-center">
-        <div className="bg-[#072f23] border border-[#0e4b39] p-6 rounded-2xl w-full max-w-sm">
-          <h2 className="text-emerald-400 font-bold text-xl mb-4">
-            Test rejimida kirish
+        <div className="bg-[#072f23] border border-[#0e4b39] p-6 rounded-2xl w-full max-w-sm shadow-xl">
+          <h2 className="text-emerald-400 font-bold text-xl mb-2">
+            Ruxsat yo'q
           </h2>
-          <p className="text-emerald-100/70 text-sm mb-4">
-            Telegram ID ngiz aniqlanmadi (Ngrok ogohlantirish oynasi sababli
-            bo'lishi mumkin). Test qilish uchun o'z Telegram ID raqamingizni
-            kiriting:
+          <p className="text-emerald-100/70 text-sm">
+            Iltimos, ushbu ilovaga faqat Telegram bot orqali kiring.
           </p>
-          <input
-            type="number"
-            value={manualIdInput}
-            onChange={(e) => setManualIdInput(e.target.value)}
-            placeholder="Masalan: 685293672"
-            className="w-full bg-[#041f17] border border-emerald-500/30 rounded-lg p-2.5 text-emerald-50 focus:outline-none mb-4 text-center"
-          />
-          <button
-            onClick={handleManualLogin}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition-colors"
-          >
-            Kirish
-          </button>
         </div>
       </div>
     );
