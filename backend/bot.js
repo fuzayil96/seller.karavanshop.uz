@@ -1,5 +1,5 @@
-const { Bot, Keyboard, InlineKeyboard } = require('grammy');
-const { readDb, updateDb } = require('./db');
+const { Bot, Keyboard, InlineKeyboard } = require("grammy");
+const { readDb, updateDb } = require("./db");
 
 // It's best to initialize the bot in the main file and pass it around, or export an initializer.
 let bot;
@@ -9,45 +9,52 @@ function setupBot(token) {
     console.warn("No Telegram Bot Token provided. Bot will not start.");
     return null;
   }
-  
+
   bot = new Bot(token);
 
-  bot.command('start', async (ctx) => {
+  bot.command("start", async (ctx) => {
     updateDb((data) => {
-      let existingUser = data.users.find(u => u.telegramId === ctx.from.id);
+      let existingUser = data.users.find((u) => u.telegramId === ctx.from.id);
       if (existingUser) {
-        existingUser.firstName = ctx.from.first_name || '';
-        existingUser.lastName = ctx.from.last_name || '';
-        existingUser.username = ctx.from.username || '';
+        existingUser.firstName = ctx.from.first_name || "";
+        existingUser.lastName = ctx.from.last_name || "";
+        existingUser.username = ctx.from.username || "";
       } else {
         data.users.push({
           telegramId: ctx.from.id,
-          firstName: ctx.from.first_name || '',
-          lastName: ctx.from.last_name || '',
-          username: ctx.from.username || '',
+          firstName: ctx.from.first_name || "",
+          lastName: ctx.from.last_name || "",
+          username: ctx.from.username || "",
           phoneNumber: null,
-          status: 'pending',
+          status: "pending",
           sellerId: null,
           notificationsEnabled: true,
-          chatId: ctx.chat.id
+          chatId: ctx.chat.id,
         });
       }
     });
 
     const db = readDb();
-    const user = db.users.find(u => u.telegramId === ctx.from.id);
+    const user = db.users.find((u) => u.telegramId === ctx.from.id);
 
-    if (user && user.status === 'banned') {
-      return ctx.reply("Kechirasiz, sizning botdan foydalanish huquqingiz cheklangan.");
+    if (user && user.status === "banned") {
+      return ctx.reply(
+        "Kechirasiz, sizning botdan foydalanish huquqingiz cheklangan.",
+      );
     }
 
-    if (user && user.status === 'approved') {
-      const baseUrl = process.env.WEBAPP_URL || 'https://example.com';
-      const webAppUrl = baseUrl.replace(/\/$/, '') + "?t=" + Date.now(); // cache buster
-      const keyboard = new Keyboard().webApp("📊 Mening Panelim", webAppUrl).resized();
-      return ctx.reply("Xush kelibsiz! Quyidagi qadalgan tugma orqali panelingizga kiring:", {
-        reply_markup: keyboard
-      });
+    if (user && user.status === "approved") {
+      const baseUrl = process.env.WEBAPP_URL || "https://example.com";
+      const webAppUrl = baseUrl.replace(/\/$/, "") + "?t=" + Date.now(); // cache buster
+      const keyboard = new Keyboard()
+        .webApp("📊 Mening Panelim", webAppUrl)
+        .resized();
+      return ctx.reply(
+        "Xush kelibsiz! Quyidagi qadalgan tugma orqali panelingizga kiring:",
+        {
+          reply_markup: keyboard,
+        },
+      );
     }
 
     const keyboard = new Keyboard()
@@ -55,62 +62,67 @@ function setupBot(token) {
       .resized()
       .oneTime();
 
-    await ctx.reply("Assalomu alaykum! Iltimos, telefon raqamingizni yuboring.", {
-      reply_markup: keyboard,
-    });
+    await ctx.reply(
+      "Assalomu alaykum! Iltimos, telefon raqamingizni yuboring.",
+      {
+        reply_markup: keyboard,
+      },
+    );
   });
 
-  bot.on('message:contact', async (ctx) => {
+  bot.on("message:contact", async (ctx) => {
     const contact = ctx.message.contact;
     const db = readDb();
     const telegramId = ctx.from.id;
     const phoneNumber = contact.phone_number;
 
-    let user = db.users.find(u => u.telegramId === telegramId);
-    
-    if (user && user.status === 'banned') {
-      return ctx.reply("Kechirasiz, sizning botdan foydalanish huquqingiz cheklangan.");
+    let user = db.users.find((u) => u.telegramId === telegramId);
+
+    if (user && user.status === "banned") {
+      return ctx.reply(
+        "Kechirasiz, sizning botdan foydalanish huquqingiz cheklangan.",
+      );
     }
 
     if (!user) {
       updateDb((data) => {
         data.users.push({
           telegramId,
-          firstName: ctx.from.first_name || '',
-          lastName: ctx.from.last_name || '',
-          username: ctx.from.username || '',
+          firstName: ctx.from.first_name || "",
+          lastName: ctx.from.last_name || "",
+          username: ctx.from.username || "",
           phoneNumber,
-          status: 'pending',
+          status: "pending",
           sellerId: null,
           notificationsEnabled: true,
-          chatId: ctx.chat.id
+          chatId: ctx.chat.id,
         });
       });
-      user = db.users.find(u => u.telegramId === telegramId);
+      user = db.users.find((u) => u.telegramId === telegramId);
     } else {
       // Update phone number if they already exist (e.g. from /start)
       updateDb((data) => {
-        let existing = data.users.find(u => u.telegramId === telegramId);
+        let existing = data.users.find((u) => u.telegramId === telegramId);
         if (existing) {
           existing.phoneNumber = phoneNumber;
-          existing.firstName = ctx.from.first_name || existing.firstName || '';
-          existing.lastName = ctx.from.last_name || existing.lastName || '';
-          existing.username = ctx.from.username || existing.username || '';
+          existing.firstName = ctx.from.first_name || existing.firstName || "";
+          existing.lastName = ctx.from.last_name || existing.lastName || "";
+          existing.username = ctx.from.username || existing.username || "";
         }
       });
-      user = readDb().users.find(u => u.telegramId === telegramId);
+      user = readDb().users.find((u) => u.telegramId === telegramId);
     }
 
     await ctx.reply("Tastiqlash so'rovi yuborildi", {
-      reply_markup: { remove_keyboard: true }
+      reply_markup: { remove_keyboard: true },
     });
 
     const adminId = db.settings.adminNotificationTelegramId;
     if (adminId) {
       try {
         await bot.api.sendMessage(
-          adminId, 
-          `Yangi tasdiqlash so'rovi!\nTelefon: ${phoneNumber}\nTelegram ID: ${telegramId}`
+          adminId,
+          `Yangi tasdiqlash so'rovi!\nTelefon: ${phoneNumber}\nTelegram ID: ${telegramId}`,
         );
       } catch (err) {
         console.error("Failed to notify admin:", err);

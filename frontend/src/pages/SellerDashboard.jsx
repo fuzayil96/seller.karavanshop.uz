@@ -44,9 +44,10 @@ const SellerDashboard = () => {
   const [notifEnabled, setNotifEnabled] = useState(true);
 
   // Telegram user ID
-  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const tgUser = WebApp.initDataUnsafe?.user || window.Telegram?.WebApp?.initDataUnsafe?.user;
   const [telegramId, setTelegramId] = useState(tgUser?.id || null);
   const [manualIdInput, setManualIdInput] = useState("");
+  const [debugInitData, setDebugInitData] = useState(false);
 
   const today = new Date();
   const pad = (n) => String(n).padStart(2, "0");
@@ -171,12 +172,21 @@ const SellerDashboard = () => {
     return (
       <div className="flex items-center justify-center h-screen p-4 text-center">
         <div className="bg-[#072f23] border border-[#0e4b39] p-6 rounded-2xl w-full max-w-sm shadow-xl">
-          <h2 className="text-emerald-400 font-bold text-xl mb-2">
+          <h2 className="text-emerald-400 font-bold text-xl mb-2" onClick={() => setDebugInitData(!debugInitData)}>
             Ruxsat yo'q
           </h2>
-          <p className="text-emerald-100/70 text-sm">
+          <p className="text-emerald-100/70 text-sm mb-4">
             Iltimos, ushbu ilovaga faqat Telegram bot orqali kiring.
           </p>
+          
+          {debugInitData && (
+            <div className="mt-4 p-3 bg-black/30 rounded-lg text-[10px] text-emerald-200/50 text-left border border-emerald-500/20 break-words max-h-48 overflow-y-auto">
+              <p className="font-bold mb-1 border-b border-emerald-500/20 pb-1">Debug Info:</p>
+              <p>initData: {WebApp.initData || "bo'sh"}</p>
+              <p>initDataUnsafe: {JSON.stringify(WebApp.initDataUnsafe)}</p>
+              <p>URL: {window.location.href}</p>
+            </div>
+          )}
         </div>
       </div>
     );
