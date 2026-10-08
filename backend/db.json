@@ -1,0 +1,118 @@
+{
+  "users": [
+    {
+      "telegramId": 685293672,
+      "phoneNumber": "+998919826002",
+      "status": "approved",
+      "sellerId": "34",
+      "notificationsEnabled": true,
+      "chatId": 685293672,
+      "firstName": "Fᴜᴢᴀʏɪʟ",
+      "lastName": "• Uʙᴀʏᴅᴜʟʟᴀʏᴇᴠ",
+      "username": "Fuzayl"
+    },
+    {
+      "telegramId": 7307042257,
+      "phoneNumber": "+998504555509",
+      "status": "approved",
+      "sellerId": "97",
+      "notificationsEnabled": true,
+      "chatId": 7307042257,
+      "firstName": "Ж",
+      "lastName": "",
+      "username": "Zjahongir1"
+    },
+    {
+      "telegramId": 8797132147,
+      "phoneNumber": "+998505250397",
+      "status": "approved",
+      "sellerId": "34",
+      "notificationsEnabled": true,
+      "chatId": 8797132147,
+      "firstName": "КАРАВАН |",
+      "lastName": "",
+      "username": ""
+    }
+  ],
+  "admins": [
+    {
+      "username": "admin",
+      "password": "password",
+      "telegramId": null
+    }
+  ],
+  "categories": [
+    {
+      "id": "-1",
+      "name": "Users",
+      "bonusPercentage": 0
+    },
+    {
+      "id": "1",
+      "name": "Admins",
+      "bonusPercentage": 0
+    },
+    {
+      "id": "2",
+      "name": "Managers",
+      "bonusPercentage": 0
+    },
+    {
+      "id": "3",
+      "name": "Cashiers",
+      "bonusPercentage": 0
+    },
+    {
+      "id": "4",
+      "name": "System",
+      "bonusPercentage": 0
+    },
+    {
+      "id": "7",
+      "name": "Seller",
+      "bonusPercentage": 0
+    },
+    {
+      "id": "8",
+      "name": "Вокзал Мужской",
+      "bonusPercentage": 3
+    },
+    {
+      "id": "9",
+      "name": "Марҳабо",
+      "bonusPercentage": 3
+    },
+    {
+      "id": "10",
+      "name": "Ислиқлол",
+      "bonusPercentage": 3
+    },
+    {
+      "id": "11",
+      "name": "Победа",
+      "bonusPercentage": 1
+    },
+    {
+      "id": "12",
+      "name": "Равонак",
+      "bonusPercentage": 3
+    },
+    {
+      "id": "13",
+      "name": "Вокзал 1",
+      "bonusPercentage": 3
+    }
+  ],
+  "settings": {
+    "adminNotificationTelegramId": 685293672,
+    "regosApiUrl": "admin",
+    "regosApiToken": "password",
+    "ui": {
+      "showLeaderboard": true,
+      "showChequeDetails": true,
+      "showLeaderboardSales": false,
+      "allowPastDates": false
+    }
+  },
+  "sales": []
+}
