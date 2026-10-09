@@ -495,7 +495,7 @@ const SellerDashboard = () => {
               >
                 <div>
                   <div className="font-semibold text-sm text-gray-200 flex items-center gap-2">
-                    Chek #{c.number}
+                    Chek #{c.code || c.number}
                     {c.isReturn && (
                       <span className="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">
                         QAYTARISH
@@ -630,7 +630,7 @@ const SellerDashboard = () => {
             <div className="p-5 border-b border-[#0e4b39] flex justify-between items-center bg-[#041f17]">
               <div>
                 <h3 className="font-bold text-emerald-50">
-                  Chek #{selectedCheque.number}
+                  Chek #{selectedCheque.code || selectedCheque.number}
                 </h3>
                 <p className="text-xs text-emerald-100/50 mt-1">
                   {new Date(selectedCheque.date * 1000).toLocaleString(
@@ -662,35 +662,38 @@ const SellerDashboard = () => {
                 </div>
               ) : chequeItems.length > 0 ? (
                 <div className="space-y-3">
-                  {chequeItems.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center border-b border-emerald-500/10 pb-3 last:border-0 last:pb-0"
-                    >
-                      <div>
-                        <p className="text-sm text-emerald-50 font-medium">
-                          {it.item?.name ||
-                            it.name ||
-                            it.item_name ||
-                            "Mahsulot"}
-                        </p>
-                        <p className="text-[11px] text-emerald-100/50 mt-0.5">
-                          {Number(it.quantity || 1)} dona ×{" "}
-                          {Number(it.price || it.cost || 0).toLocaleString(
-                            "uz-UZ",
-                          )}{" "}
-                          UZS
-                        </p>
+                  {chequeItems.map((it, idx) => {
+                    const isCanceled = Number(it.quantity || 1) < 0;
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex justify-between items-center border-b border-emerald-500/10 pb-3 last:border-0 last:pb-0 ${isCanceled ? "opacity-60 line-through" : ""}`}
+                      >
+                        <div>
+                          <p className={`text-sm font-medium ${isCanceled ? "text-red-300" : "text-emerald-50"}`}>
+                            {it.item?.name ||
+                              it.name ||
+                              it.item_name ||
+                              "Mahsulot"}
+                          </p>
+                          <p className="text-[11px] text-emerald-100/50 mt-0.5">
+                            {Number(it.quantity || 1)} dona ×{" "}
+                            {Number(it.price || it.cost || 0).toLocaleString(
+                              "uz-UZ",
+                            )}{" "}
+                            UZS
+                          </p>
+                        </div>
+                        <div className={`text-sm font-bold ${isCanceled ? "text-red-400" : "text-emerald-400"}`}>
+                          {Number(
+                            it.amount ||
+                              it.total ||
+                              Number(it.quantity || 1) * Number(it.price || 0),
+                          ).toLocaleString("uz-UZ")}
+                        </div>
                       </div>
-                      <div className="text-sm font-bold text-emerald-400">
-                        {Number(
-                          it.amount ||
-                            it.total ||
-                            Number(it.quantity || 1) * Number(it.price || 0),
-                        ).toLocaleString("uz-UZ")}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center text-emerald-100/50 text-sm py-6">

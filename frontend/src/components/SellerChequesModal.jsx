@@ -279,19 +279,20 @@ export default function SellerChequesModal({
                       const qty = Number(it.quantity || 1);
                       const price = Number(it.price || it.cost || 0);
                       const total = Number(it.amount || it.total || qty * price);
+                      const isCanceled = qty < 0;
 
                       return (
                         <div
                           key={it.uuid || idx}
-                          className="p-3 flex items-center justify-between gap-3 text-xs"
+                          className={`p-3 flex items-center justify-between gap-3 text-xs ${isCanceled ? "opacity-60 line-through" : ""}`}
                         >
                           <div>
-                            <p className="font-semibold">{itemName}</p>
+                            <p className={`font-semibold ${isCanceled ? "text-rose-400" : ""}`}>{itemName}</p>
                             <p className="opacity-60 text-[11px] mt-0.5">
                               {qty} dona × {formatMoney(price, "UZS")}
                             </p>
                           </div>
-                          <span className="font-bold text-emerald-400">
+                          <span className={`font-bold ${isCanceled ? "text-rose-400" : "text-emerald-400"}`}>
                             {formatMoney(total, "UZS")}
                           </span>
                         </div>
