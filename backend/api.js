@@ -356,6 +356,7 @@ router.get('/webapp/stats/:telegramId', async (req, res) => {
             id: c.id || c.uuid || Math.random().toString(),
             date: c.date,
             amount: amount,
+            bonus: (amount * (category.bonusPercentage || 0)) / 100,
             number: c.number || c.doc_number || '-',
             isReturn: isReturn
           });

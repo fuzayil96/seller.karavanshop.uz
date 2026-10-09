@@ -511,11 +511,23 @@ const SellerDashboard = () => {
                     })}
                   </div>
                 </div>
-                <div
-                  className={`font-bold text-sm ${c.isReturn ? "text-red-400" : "text-emerald-400"}`}
-                >
-                  {c.isReturn ? "-" : "+"}
-                  {Math.abs(Number(c.amount)).toLocaleString("uz-UZ")} UZS
+                <div className="flex flex-col items-end">
+                  <div
+                    className={`font-bold text-sm ${c.isReturn ? "text-red-400" : "text-emerald-400"}`}
+                  >
+                    {c.isReturn ? "-" : "+"}
+                    {Math.abs(Number(c.amount)).toLocaleString("uz-UZ")} UZS
+                  </div>
+                  {c.bonus > 0 && !c.isReturn && (
+                    <div className="text-[10px] text-amber-400 font-medium">
+                      +{Number(c.bonus).toLocaleString("uz-UZ")} UZS bonus
+                    </div>
+                  )}
+                  {c.bonus < 0 && c.isReturn && (
+                    <div className="text-[10px] text-red-400/80 font-medium">
+                      {Number(c.bonus).toLocaleString("uz-UZ")} UZS bonus
+                    </div>
+                  )}
                 </div>
               </div>
             ))
