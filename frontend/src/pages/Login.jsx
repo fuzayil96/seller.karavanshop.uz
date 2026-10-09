@@ -20,7 +20,7 @@ const Login = ({ setToken }) => {
       } else {
         setError('Login muvaffaqiyatsiz');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Xatolik yuz berdi. Login yoki parol noto\'g\'ri.');
     }
   };

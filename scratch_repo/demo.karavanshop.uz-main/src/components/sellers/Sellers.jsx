@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import getData from "../utils/getData";
-import { formatMoney } from "../utils/formatters";
-import { printSellerReport } from "../utils/printSellerReport";
-import { exportSellerExcel } from "../utils/exportSellerExcel";
+import getData from "../../utils/getData";
+import { formatMoney } from "../../utils/formatters";
+import { printSellerReport } from "../../utils/printSellerReport";
+import { exportSellerExcel } from "../../utils/exportSellerExcel";
 import SellerChequesModal from "./SellerChequesModal";
 
 // Bugungi sanani YYYY-MM-DD ko'rinishida olish (Mahalliy vaqt)
@@ -36,17 +36,17 @@ function getMonthStartDateStr() {
 function dateStringToUnixRange(startDateStr, endDateStr) {
   const startObj = new Date(`${startDateStr}T00:00:00`);
   const endObj = new Date(`${endDateStr}T23:59:59`);
-
+  
   let start = Math.floor(startObj.getTime() / 1000);
   let end = Math.floor(endObj.getTime() / 1000);
 
-  if (isNaN(start)) start = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
-  if (isNaN(end)) end = Math.floor(new Date().setHours(23, 59, 59, 999) / 1000);
+  if (isNaN(start)) start = Math.floor(new Date().setHours(0,0,0,0) / 1000);
+  if (isNaN(end)) end = Math.floor(new Date().setHours(23,59,59,999) / 1000);
 
   return { start, end };
 }
 
-export default function SellersStats({ isDarkMode }) {
+export default function Sellers({ isDarkMode }) {
   const [loading, setLoading] = useState(true);
   const [cheques, setCheques] = useState([]);
   const [usersList, setUsersList] = useState([]);
@@ -56,9 +56,7 @@ export default function SellersStats({ isDarkMode }) {
   const [selectedDate, setSelectedDate] = useState(getTodayDateStr());
   const [customStartDate, setCustomStartDate] = useState(getTodayDateStr());
   const [customEndDate, setCustomEndDate] = useState(getTodayDateStr());
-  const [selectedMonth, setSelectedMonth] = useState(
-    getTodayDateStr().substring(0, 7),
-  );
+  const [selectedMonth, setSelectedMonth] = useState(getTodayDateStr().substring(0, 7));
 
   // Foiz stavkasi (Commission Rate %)
   // Foydalanuvchi inputga son yozsa darhol sotuvi bo'yicha foizini hisoblaydi
@@ -76,7 +74,7 @@ export default function SellersStats({ isDarkMode }) {
   const [selectedSeller, setSelectedSeller] = useState(null);
 
   // Faol sana oralig'ini hisoblash
-  const pendingDateRange = useMemo(() => {
+  const { startUnix, endUnix, dateLabel } = useMemo(() => {
     let sDate = selectedDate;
     let eDate = selectedDate;
     let label = selectedDate;
@@ -122,39 +120,6 @@ export default function SellersStats({ isDarkMode }) {
     return { startUnix: start, endUnix: end, dateLabel: label };
   }, [dateMode, selectedDate, customStartDate, customEndDate, selectedMonth]);
 
-  const [activeDateRange, setActiveDateRange] = useState(() => {
-    const { start, end } = dateStringToUnixRange(
-      getTodayDateStr(),
-      getTodayDateStr(),
-    );
-    return {
-      startUnix: start,
-      endUnix: end,
-      dateLabel: `Bugun (${getTodayDateStr()})`,
-    };
-  });
-  const [dateError, setDateError] = useState("");
-
-  const handleApplyDate = () => {
-    if (dateMode === "custom") {
-      const startObj = new Date(customStartDate);
-      const endObj = new Date(customEndDate);
-      const diffDays = (endObj - startObj) / (1000 * 3600 * 24);
-
-      if (diffDays > 31) {
-        setDateError("Oraliq 31 kundan oshmasligi kerak!");
-        return;
-      } else if (diffDays < 0) {
-        setDateError(
-          "Boshlang'ich sana yakuniy sanadan katta bo'lishi mumkin emas!",
-        );
-        return;
-      }
-    }
-    setDateError("");
-    setActiveDateRange(pendingDateRange);
-  };
-
   // REGOS API dan sellerlar va cheklarni yuklash
   const fetchData = useCallback(async () => {
     let isMounted = true;
@@ -170,13 +135,9 @@ export default function SellersStats({ isDarkMode }) {
       const fetchChequesInChunks = async (start, end) => {
         const CHUNK_SIZE = 3 * 86400; // 3 kunlik qismlar
         let allCheques = [];
-
+        
         // Ketma-ket (sequential) so'rovlar yuborish, API bloklab qo'ymasligi uchun
-        for (
-          let currentStart = start;
-          currentStart <= end;
-          currentStart += CHUNK_SIZE + 1
-        ) {
+        for (let currentStart = start; currentStart <= end; currentStart += CHUNK_SIZE + 1) {
           let currentEnd = currentStart + CHUNK_SIZE;
           if (currentEnd > end) currentEnd = end;
 
@@ -187,9 +148,7 @@ export default function SellersStats({ isDarkMode }) {
                 start_date: currentStart,
                 end_date: currentEnd,
                 limit: 100000,
-                filters: [
-                  { Field: "status", Operator: "Equal", Value: "Closed" },
-                ],
+                filters: [{ Field: "status", Operator: "Equal", Value: "Closed" }],
               },
             });
             if (res && Array.isArray(res.result)) {
@@ -210,16 +169,13 @@ export default function SellersStats({ isDarkMode }) {
         const sorted = Array.from(uniqueMap.values()).sort((a, b) => {
           return (Number(b.date) || 0) - (Number(a.date) || 0);
         });
-
+        
         return sorted;
       };
 
       const [usersRes, allCheques] = await Promise.all([
         usersPromise,
-        fetchChequesInChunks(
-          activeDateRange.startUnix,
-          activeDateRange.endUnix,
-        ),
+        fetchChequesInChunks(startUnix, endUnix),
       ]);
 
       if (isMounted) {
@@ -234,78 +190,87 @@ export default function SellersStats({ isDarkMode }) {
     return () => {
       isMounted = false;
     };
-  }, [activeDateRange]);
+  }, [startUnix, endUnix]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   // Cheklarni sellerlar bo'yicha guruhlash va hisoblash
-  const {
-    sellersStats,
-    totalNetSales,
-    totalGrossSales,
-    totalReturnsSum,
-    totalChequesCount,
-    branchesList,
-  } = useMemo(() => {
-    // 1. Sellerlar xaritasi
-    const statsMap = new Map();
+  const { sellersStats, totalNetSales, totalGrossSales, totalReturnsSum, totalChequesCount, branchesList } =
+    useMemo(() => {
+      // 1. Sellerlar xaritasi
+      const statsMap = new Map();
 
-    // REGOS dagi barcha foydalanuvchilarni boshlang'ich kiritish (agar sotuv qilgan bo'lmasa 0 bo'lib turadi)
-    usersList.forEach((u) => {
-      // Faqat sotuvchi bo'lishi mumkin bo'lgan foydalanuvchilar yoki faol xodimlar
-      statsMap.set(String(u.id), {
-        id: u.id,
-        name:
-          u.full_name ||
-          `${u.first_name || ""} ${u.last_name || ""}`.trim() ||
-          u.login,
-        group: u.user_group?.name || "",
-        barcode: u.seller_barcode || "",
-        login: u.login || "",
-        phone: u.main_phone || u.phones || "",
-        active: u.active !== false,
-        totalSales: 0,
-        returnsSum: 0,
-        netSales: 0,
-        chequesCount: 0,
-        returnsCount: 0,
-        cheques: [],
+      // REGOS dagi barcha foydalanuvchilarni boshlang'ich kiritish (agar sotuv qilgan bo'lmasa 0 bo'lib turadi)
+      usersList.forEach((u) => {
+        // Faqat sotuvchi bo'lishi mumkin bo'lgan foydalanuvchilar yoki faol xodimlar
+        statsMap.set(String(u.id), {
+          id: u.id,
+          name: u.full_name || `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.login,
+          group: u.user_group?.name || "",
+          barcode: u.seller_barcode || "",
+          login: u.login || "",
+          phone: u.main_phone || u.phones || "",
+          active: u.active !== false,
+          totalSales: 0,
+          returnsSum: 0,
+          netSales: 0,
+          chequesCount: 0,
+          returnsCount: 0,
+          cheques: [],
+        });
       });
-    });
 
-    let grandTotalGross = 0;
-    let grandTotalReturns = 0;
-    let grandTotalCheques = 0;
+      let grandTotalGross = 0;
+      let grandTotalReturns = 0;
+      let grandTotalCheques = 0;
 
-    // 2. Belgilangan sanadagi cheklarni tahlil qilish
-    cheques.forEach((ch) => {
-      grandTotalCheques++;
-      const amt = Number(ch.amount || 0);
-      const isRet = Boolean(ch.is_return);
+      // 2. Belgilangan sanadagi cheklarni tahlil qilish
+      cheques.forEach((ch) => {
+        grandTotalCheques++;
+        const amt = Number(ch.amount || 0);
+        const isRet = Boolean(ch.is_return);
 
-      if (isRet) {
-        grandTotalReturns += amt;
-      } else {
-        grandTotalGross += amt;
-      }
+        if (isRet) {
+          grandTotalReturns += amt;
+        } else {
+          grandTotalGross += amt;
+        }
 
-      // Seller ma'lumotini aniqlash
-      const sellerObj = ch.seller || null;
-      let sellerKey = sellerObj?.id ? String(sellerObj.id) : null;
+        // Seller ma'lumotini aniqlash
+        const sellerObj = ch.seller || null;
+        let sellerKey = sellerObj?.id ? String(sellerObj.id) : null;
 
-      if (!sellerKey) {
-        // Seller ko'rsatilmagan cheklar
-        sellerKey = "unassigned";
-        if (!statsMap.has(sellerKey)) {
+        if (!sellerKey) {
+          // Seller ko'rsatilmagan cheklar
+          sellerKey = "unassigned";
+          if (!statsMap.has(sellerKey)) {
+            statsMap.set(sellerKey, {
+              id: "unassigned",
+              name: "Seller belgilanmagan",
+              group: "Umumiy",
+              barcode: "—",
+              login: "—",
+              phone: "—",
+              active: true,
+              totalSales: 0,
+              returnsSum: 0,
+              netSales: 0,
+              chequesCount: 0,
+              returnsCount: 0,
+              cheques: [],
+            });
+          }
+        } else if (!statsMap.has(sellerKey)) {
+          // Chekdagi seller user/get da bo'lmasa
           statsMap.set(sellerKey, {
-            id: "unassigned",
-            name: "Seller belgilanmagan",
-            group: "Umumiy",
-            barcode: "—",
-            login: "—",
-            phone: "—",
+            id: sellerObj.id,
+            name: sellerObj.full_name || sellerObj.first_name || `Seller #${sellerObj.id}`,
+            group: sellerObj.user_group?.name || "",
+            barcode: sellerObj.seller_barcode || "",
+            login: sellerObj.login || "",
+            phone: sellerObj.main_phone || "",
             active: true,
             totalSales: 0,
             returnsSum: 0,
@@ -315,85 +280,64 @@ export default function SellersStats({ isDarkMode }) {
             cheques: [],
           });
         }
-      } else if (!statsMap.has(sellerKey)) {
-        // Chekdagi seller user/get da bo'lmasa
-        statsMap.set(sellerKey, {
-          id: sellerObj.id,
-          name:
-            sellerObj.full_name ||
-            sellerObj.first_name ||
-            `Seller #${sellerObj.id}`,
-          group: sellerObj.user_group?.name || "",
-          barcode: sellerObj.seller_barcode || "",
-          login: sellerObj.login || "",
-          phone: sellerObj.main_phone || "",
-          active: true,
-          totalSales: 0,
-          returnsSum: 0,
-          netSales: 0,
-          chequesCount: 0,
-          returnsCount: 0,
-          cheques: [],
-        });
-      }
 
-      const sData = statsMap.get(sellerKey);
-      sData.cheques.push(ch);
+        const sData = statsMap.get(sellerKey);
+        sData.cheques.push(ch);
 
-      if (isRet) {
-        sData.returnsSum += amt;
-        sData.returnsCount++;
-      } else {
-        sData.totalSales += amt;
-        sData.chequesCount++;
-      }
+        if (isRet) {
+          sData.returnsSum += amt;
+          sData.returnsCount++;
+        } else {
+          sData.totalSales += amt;
+          sData.chequesCount++;
+        }
 
-      sData.netSales = sData.totalSales - sData.returnsSum;
-    });
+        sData.netSales = sData.totalSales - sData.returnsSum;
+      });
 
-    const grandTotalNet = grandTotalGross - grandTotalReturns;
+      const grandTotalNet = grandTotalGross - grandTotalReturns;
 
-    // Filiallar (user_group) ro'yxati
-    const branches = new Set();
-    const allList = Array.from(statsMap.values()).map((s) => {
-      if (s.group) branches.add(s.group);
+      // Filiallar (user_group) ro'yxati
+      const branches = new Set();
+      const allList = Array.from(statsMap.values()).map((s) => {
+        if (s.group) branches.add(s.group);
 
-      // Har bir sellerning foiz stavkasi (agar alohida belgilangan bo'lsa shuni, aks holda umumiy stavka)
-      const rate =
-        customRates[s.id] !== undefined
-          ? Number(customRates[s.id])
-          : Number(commissionRate || 0);
+        // Har bir sellerning foiz stavkasi (agar alohida belgilangan bo'lsa shuni, aks holda umumiy stavka)
+        const rate =
+          customRates[s.id] !== undefined
+            ? Number(customRates[s.id])
+            : Number(commissionRate || 0);
 
-      // Inputga son yozilganda sotuvi bo'yicha foizni hisoblash:
-      // Bonus = (Sof sotuv * Foiz) / 100
-      const bonusSum = Math.max(0, Math.round((s.netSales * rate) / 100));
+        // Inputga son yozilganda sotuvi bo'yicha foizni hisoblash:
+        // Bonus = (Sof sotuv * Foiz) / 100
+        const bonusSum = Math.max(0, Math.round((s.netSales * rate) / 100));
 
-      // Ulush foizi (Umumiy sotuvdagi ulushi)
-      const sharePercent =
-        grandTotalNet > 0 ? (s.netSales / grandTotalNet) * 100 : 0;
+        // Ulush foizi (Umumiy sotuvdagi ulushi)
+        const sharePercent =
+          grandTotalNet > 0 ? (s.netSales / grandTotalNet) * 100 : 0;
 
-      // O'rtacha chek
-      const avgCheque =
-        s.chequesCount > 0 ? Math.round(s.netSales / s.chequesCount) : 0;
+        // O'rtacha chek
+        const avgCheque =
+          s.chequesCount > 0 ? Math.round(s.netSales / s.chequesCount) : 0;
+
+        return {
+          ...s,
+          rate,
+          bonusSum,
+          sharePercent: Math.max(0, sharePercent),
+          avgCheque,
+        };
+      });
 
       return {
-        ...s,
-        rate,
-        bonusSum,
-        sharePercent: Math.max(0, sharePercent),
-        avgCheque,
+        sellersStats: allList,
+        totalNetSales: grandTotalNet,
+        totalGrossSales: grandTotalGross,
+        totalReturnsSum: grandTotalReturns,
+        totalChequesCount: grandTotalCheques,
+        branchesList: Array.from(branches).sort(),
       };
-    });
-
-    return {
-      sellersStats: allList,
-      totalNetSales: grandTotalNet,
-      totalGrossSales: grandTotalGross,
-      totalReturnsSum: grandTotalReturns,
-      totalChequesCount: grandTotalCheques,
-      branchesList: Array.from(branches).sort(),
-    };
-  }, [cheques, usersList, commissionRate, customRates]);
+    }, [cheques, usersList, commissionRate, customRates]);
 
   // Filtrlash va saralash
   const filteredSellers = useMemo(() => {
@@ -460,7 +404,7 @@ export default function SellersStats({ isDarkMode }) {
   const handlePrint = () => {
     printSellerReport({
       sellers: filteredSellers,
-      dateLabel: activeDateRange.dateLabel,
+      dateLabel,
       globalCommissionRate: commissionRate,
       totalNetSales,
       totalCommissionSum,
@@ -473,7 +417,7 @@ export default function SellersStats({ isDarkMode }) {
   const handleExportExcel = () => {
     exportSellerExcel({
       sellers: filteredSellers,
-      dateLabel: activeDateRange.dateLabel,
+      dateLabel,
       globalCommissionRate: commissionRate,
       totalNetSales,
       totalCommissionSum,
@@ -483,7 +427,7 @@ export default function SellersStats({ isDarkMode }) {
   };
 
   return (
-    <div className="w-full mx-auto space-y-5 pb-12">
+    <div className="max-w-7xl mx-auto space-y-5 pb-12">
       {/* 1. Yuqori qadalib turuvchi Sarlavha va Asosiy Boshqaruv */}
       <div
         style={{ position: "sticky", top: 0, zIndex: 20 }}
@@ -512,8 +456,7 @@ export default function SellersStats({ isDarkMode }) {
                 isDarkMode ? "text-emerald-200/75" : "text-slate-500"
               }`}
             >
-              Belgilangan sanadagi har bir sotuvchining savdosi va kiritilgan
-              foiz bo'yicha bonusi
+              Belgilangan sanadagi har bir sotuvchining savdosi va kiritilgan foiz bo'yicha bonusi
             </p>
           </div>
 
@@ -586,19 +529,22 @@ export default function SellersStats({ isDarkMode }) {
                   : "bg-emerald-50 text-[#064e3b] border border-emerald-200"
               }`}
             >
-              {pendingDateRange.dateLabel}
+              {dateLabel}
             </span>
           </div>
 
           {/* Tezkor sana tugmalari */}
           <div className="flex flex-wrap items-center gap-1.5">
             {[
-              { id: "today", label: "Bugun / Aniq sana" },
+              { id: "today", label: "Bugun" },
+              { id: "yesterday", label: "Kecha" },
+              { id: "last3", label: "3 kun" },
+              { id: "last7", label: "7 kun" },
+              { id: "thisMonth", label: "Shu oy" },
+              { id: "month", label: "Oylar" },
               { id: "custom", label: "Oraliq sana" },
             ].map((m) => {
-              const active =
-                dateMode === m.id ||
-                (m.id === "today" && dateMode === "specific");
+              const active = dateMode === m.id;
               return (
                 <button
                   key={m.id}
@@ -610,8 +556,8 @@ export default function SellersStats({ isDarkMode }) {
                         ? "bg-[#065f46] text-white shadow-xs"
                         : "bg-[#064e3b] text-white shadow-xs"
                       : isDarkMode
-                        ? "bg-[#041f17] text-emerald-200/70 hover:text-white hover:bg-[#0c3d2e]"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ? "bg-[#041f17] text-emerald-200/70 hover:text-white hover:bg-[#0c3d2e]"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                   }`}
                 >
                   {m.label}
@@ -654,6 +600,22 @@ export default function SellersStats({ isDarkMode }) {
                 />
               </div>
             </div>
+          ) : dateMode === "month" ? (
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-xs opacity-70 whitespace-nowrap">
+                Oy tanlash:
+              </span>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className={`px-3 py-1.5 rounded-xl text-xs transition border focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                  isDarkMode
+                    ? "bg-[#041f17] border-[#0e4b39] text-white"
+                    : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
+              />
+            </div>
           ) : (
             <div className="flex items-center gap-2 pt-1">
               <span className="text-xs opacity-70 whitespace-nowrap">
@@ -674,26 +636,6 @@ export default function SellersStats({ isDarkMode }) {
               />
             </div>
           )}
-
-          {/* Xatolik va Qo'llash tugmasi */}
-          <div className="flex flex-col gap-2 pt-2 pb-1">
-            {dateError && (
-              <div className="text-red-400 text-[11px] font-bold bg-red-400/10 p-2 rounded-xl border border-red-500/20">
-                ⚠️ {dateError}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={handleApplyDate}
-              className={`w-full py-2.5 rounded-xl text-sm font-bold transition shadow-sm ${
-                isDarkMode
-                  ? "bg-emerald-600 hover:bg-emerald-500 text-white"
-                  : "bg-[#064e3b] hover:bg-[#043226] text-white"
-              }`}
-            >
-              Qo'llash
-            </button>
-          </div>
         </div>
 
         {/* FOIZ STAVKASI HISOB-KITOBI (Foydalanuvchi son yozsa foiz hisoblash) */}
@@ -729,9 +671,7 @@ export default function SellersStats({ isDarkMode }) {
                 max="100"
                 step="0.1"
                 value={commissionRate}
-                onChange={(e) =>
-                  setCommissionRate(Math.max(0, Number(e.target.value)))
-                }
+                onChange={(e) => setCommissionRate(Math.max(0, Number(e.target.value)))}
                 placeholder="Masalan: 2 yoki 3"
                 className={`w-full pl-4 pr-10 py-2.5 rounded-xl text-base font-extrabold transition border focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                   isDarkMode
@@ -755,8 +695,8 @@ export default function SellersStats({ isDarkMode }) {
                     commissionRate === num
                       ? "bg-amber-500 text-white border-amber-600 shadow-xs"
                       : isDarkMode
-                        ? "bg-[#041f17] border-[#0e4b39] text-amber-200 hover:bg-amber-950/40"
-                        : "bg-white border-slate-200 text-slate-700 hover:bg-amber-50"
+                      ? "bg-[#041f17] border-[#0e4b39] text-amber-200 hover:bg-amber-950/40"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-amber-50"
                   }`}
                 >
                   {num}%
@@ -864,8 +804,7 @@ export default function SellersStats({ isDarkMode }) {
             {totalChequesCount} ta
           </p>
           <p className="text-[10px] opacity-60 mt-1">
-            Qaytarish:{" "}
-            {sellersStats.reduce((acc, s) => acc + s.returnsCount, 0)} ta
+            Qaytarish: {sellersStats.reduce((acc, s) => acc + s.returnsCount, 0)} ta
           </p>
         </div>
 
@@ -935,9 +874,7 @@ export default function SellersStats({ isDarkMode }) {
                 : "bg-slate-50 border-slate-200 text-slate-800"
             }`}
           >
-            <option value="all">
-              Barcha filiallar ({branchesList.length})
-            </option>
+            <option value="all">Barcha filiallar ({branchesList.length})</option>
             {branchesList.map((b) => (
               <option key={b} value={b}>
                 {b}
@@ -972,8 +909,8 @@ export default function SellersStats({ isDarkMode }) {
                   ? "bg-[#064e3b] border-[#0e4b39] text-white"
                   : "bg-emerald-100 border-emerald-300 text-emerald-900"
                 : isDarkMode
-                  ? "bg-[#041f17] border-[#0e4b39] text-emerald-200/50"
-                  : "bg-slate-50 border-slate-200 text-slate-500"
+                ? "bg-[#041f17] border-[#0e4b39] text-emerald-200/50"
+                : "bg-slate-50 border-slate-200 text-slate-500"
             }`}
           >
             {onlyActive ? "✓ Faqat sotuv qilganlar" : "Barcha sellerlar"}
@@ -1132,9 +1069,7 @@ export default function SellersStats({ isDarkMode }) {
                         {/* Qaytarish */}
                         <td
                           className={`py-3 px-4 text-right whitespace-nowrap font-medium ${
-                            seller.returnsSum > 0
-                              ? "text-rose-400"
-                              : "opacity-40"
+                            seller.returnsSum > 0 ? "text-rose-400" : "opacity-40"
                           }`}
                         >
                           {seller.returnsSum > 0
@@ -1179,10 +1114,7 @@ export default function SellersStats({ isDarkMode }) {
                               step="0.1"
                               value={seller.rate}
                               onChange={(e) =>
-                                handleCustomRateChange(
-                                  seller.id,
-                                  e.target.value,
-                                )
+                                handleCustomRateChange(seller.id, e.target.value)
                               }
                               className={`w-16 px-1.5 py-1 rounded-lg text-center font-bold text-xs transition border focus:outline-none focus:ring-1 focus:ring-amber-500 ${
                                 isDarkMode
@@ -1238,7 +1170,7 @@ export default function SellersStats({ isDarkMode }) {
       {selectedSeller && (
         <SellerChequesModal
           seller={selectedSeller}
-          dateLabel={activeDateRange.dateLabel}
+          dateLabel={dateLabel}
           commissionRate={selectedSeller.rate}
           onClose={() => setSelectedSeller(null)}
           isDarkMode={isDarkMode}

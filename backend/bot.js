@@ -51,14 +51,36 @@ function setupBot(token) {
       if (!baseUrl.endsWith("/")) {
         baseUrl += "/";
       }
-      const keyboard = new Keyboard()
-        .webApp("📊 Mening Panelim", baseUrl)
-        .resized();
+      const keyboard = new InlineKeyboard()
+        .webApp("📊 Mening Panelim", baseUrl);
+      
+      // Eski ishlamaydigan pastki klaviaturani olib tashlash va Menu tugmasini o'rnatish
+      try {
+        await ctx.api.setChatMenuButton({
+          chat_id: ctx.chat.id,
+          menu_button: {
+            type: "web_app",
+            text: "📊 Panel",
+            web_app: { url: baseUrl }
+          }
+        });
+        
+        // Eski klaviaturani foydalanuvchi ekranidan butunlay tozalash uchun vaqtinchalik xabar
+        const tempMsg = await ctx.reply("Klaviaturani yangilash...", {
+          reply_markup: { remove_keyboard: true }
+        });
+        await ctx.api.deleteMessage(ctx.chat.id, tempMsg.message_id);
+      } catch (e) {
+        console.error("Menu button o'rnatishda xatolik:", e);
+      }
+
       return ctx.reply(
-        "Xush kelibsiz! Quyidagi qadalgan tugma orqali panelingizga kiring:",
+        "Xush kelibsiz! Quyidagi tugma orqali panelingizga kiring:",
         {
-          reply_markup: keyboard,
-        },
+          reply_markup: {
+            inline_keyboard: keyboard.inline_keyboard,
+          },
+        }
       );
     }
 

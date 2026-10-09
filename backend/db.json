@@ -37,8 +37,14 @@
   "admins": [
     {
       "username": "admin",
-      "password": "password",
+      "password": "parol9696",
       "telegramId": null
+    },
+    {
+      "username": "analytics",
+      "password": "password123",
+      "telegramId": null,
+      "role": "analytics"
     }
   ],
   "categories": [

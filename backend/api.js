@@ -14,12 +14,19 @@ const verifyAdmin = (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.role !== 'admin') throw new Error();
+    if (decoded.role !== 'admin' && decoded.role !== 'analytics') throw new Error();
     req.admin = decoded;
     next();
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
+};
+
+const requireSuperAdmin = (req, res, next) => {
+  if (req.admin.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
 };
 
 async function getData(data) {
@@ -43,7 +50,8 @@ router.post('/admin/login', (req, res) => {
   const db = readDb();
   const admin = db.admins.find(a => a.username === username && a.password === password);
   if (admin) {
-    const token = jwt.sign({ username: admin.username, role: 'admin' }, JWT_SECRET);
+    const role = admin.role || 'admin';
+    const token = jwt.sign({ username: admin.username, role: role }, JWT_SECRET);
     res.json({ token });
   } else {
     res.status(401).json({ error: 'Invalid credentials' });
@@ -51,13 +59,13 @@ router.post('/admin/login', (req, res) => {
 });
 
 // Admin get settings
-router.get('/admin/settings', verifyAdmin, (req, res) => {
+router.get('/admin/settings', verifyAdmin, requireSuperAdmin, (req, res) => {
   const db = readDb();
   res.json({ settings: db.settings, categories: db.categories });
 });
 
 // Admin update settings
-router.post('/admin/settings', verifyAdmin, (req, res) => {
+router.post('/admin/settings', verifyAdmin, requireSuperAdmin, (req, res) => {
   const { adminNotificationTelegramId, categories, ui } = req.body;
   updateDb(db => {
     if (adminNotificationTelegramId !== undefined) {
@@ -74,7 +82,7 @@ router.post('/admin/settings', verifyAdmin, (req, res) => {
 });
 
 // Admin list users
-router.get('/admin/users', verifyAdmin, (req, res) => {
+router.get('/admin/users', verifyAdmin, requireSuperAdmin, (req, res) => {
   const db = readDb();
   res.json(db.users);
 });
@@ -91,7 +99,7 @@ router.get('/admin/regos/users', verifyAdmin, async (req, res) => {
 });
 
 // Admin approve/update user
-router.post('/admin/users/:telegramId', verifyAdmin, async (req, res) => {
+router.post('/admin/users/:telegramId', verifyAdmin, requireSuperAdmin, async (req, res) => {
   const { telegramId } = req.params;
   const { sellerId, status } = req.body;
   let userUpdated = false;
@@ -116,8 +124,26 @@ router.post('/admin/users/:telegramId', verifyAdmin, async (req, res) => {
         if (!baseUrl.endsWith('/')) {
           baseUrl += '/';
         }
-        const { Keyboard } = require('grammy');
-        const keyboard = new Keyboard().webApp("📊 Mening Panelim", baseUrl).resized();
+        const { InlineKeyboard } = require('grammy');
+        const keyboard = new InlineKeyboard().webApp("📊 Mening Panelim", baseUrl);
+        
+        try {
+          await bot.api.setChatMenuButton({
+            chat_id: telegramId,
+            menu_button: {
+              type: "web_app",
+              text: "📊 Panel",
+              web_app: { url: baseUrl }
+            }
+          });
+          const tempMsg = await bot.api.sendMessage(telegramId, "Klaviaturani yangilash...", {
+            reply_markup: { remove_keyboard: true }
+          });
+          await bot.api.deleteMessage(telegramId, tempMsg.message_id);
+        } catch (e) {
+          console.error("Menu/keyboard xatolik (api.js):", e);
+        }
+
         await bot.api.sendMessage(telegramId, "Tasdiqlandi! Siz endi botdan va Web App dan to'liq foydalanishingiz mumkin.", {
           reply_markup: keyboard
         });
@@ -141,7 +167,7 @@ router.post('/admin/users/:telegramId', verifyAdmin, async (req, res) => {
 });
 
 // Admin send message
-router.post('/admin/message', verifyAdmin, async (req, res) => {
+router.post('/admin/message', verifyAdmin, requireSuperAdmin, async (req, res) => {
   const { telegramId, message } = req.body; // telegramId = 'all' for bulk
   const db = readDb();
   const bot = getBot();
@@ -218,12 +244,27 @@ router.get('/webapp/stats/:telegramId', async (req, res) => {
       if (match) {
         sellerName = [match.first_name, match.last_name].filter(Boolean).join(' ') || match.name || match.username || match.login || sellerName;
         userGroupId = match.user_group?.id;
+        user.groupName = match.user_group?.name || '';
       }
     }
   } catch(e) {}
   user.sellerName = sellerName;
 
   const category = db.categories.find(c => c.id == userGroupId) || { bonusPercentage: 0 };
+  
+  let cashservers = [];
+  try {
+    const csRes = await getData({ url: "/cashserver/get", reqData: {} });
+    if (csRes && Array.isArray(csRes.result)) {
+      cashservers = csRes.result.map(c => ({
+        id: c.id,
+        name: c.name,
+        last_sync: c.last_sync,
+        sync_status: c.sync_status,
+        active: c.active
+      }));
+    }
+  } catch(e) {}
   
   try {
     // If dates not provided, default to current month
@@ -367,7 +408,8 @@ router.get('/webapp/stats/:telegramId', async (req, res) => {
       overallRank: overallRank > 0 ? overallRank : '-',
       groupLeaderboard: uiSettings.showLeaderboard ? groupLeaderboard : [],
       overallLeaderboard: uiSettings.showLeaderboard ? overallLeaderboard : [],
-      settings: uiSettings
+      settings: uiSettings,
+      cashservers: cashservers
     });
 
   } catch (err) {

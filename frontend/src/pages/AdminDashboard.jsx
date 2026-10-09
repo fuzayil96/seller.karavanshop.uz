@@ -6,12 +6,19 @@ import SellersStats from '../components/SellersStats';
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:3000/api' : '/api';
 
+const parseJwt = (token) => {
+  try { return JSON.parse(atob(token.split('.')[1])); } catch (e) { return null; }
+};
+
 const AdminDashboard = ({ token, setToken }) => {
+  const decoded = parseJwt(token);
+  const role = decoded?.role || 'admin';
+
   const [data, setData] = useState({ users: [], settings: {}, categories: [] });
   const [regosUsers, setRegosUsers] = useState([]);
   const [regosGroups, setRegosGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState(role === 'analytics' ? 'stats' : 'users');
   
   // Modal state
   const [editingUser, setEditingUser] = useState(null);
@@ -61,19 +68,39 @@ const AdminDashboard = ({ token, setToken }) => {
   const fetchAdminData = async () => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [usersRes, settingsRes, regosUsersRes, regosGroupsRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/users`, { headers }),
-        axios.get(`${API_URL}/admin/settings`, { headers }),
-        axios.get(`${API_URL}/admin/regos/users`, { headers }).catch(() => ({ data: { result: [] } })),
-        axios.get(`${API_URL}/admin/regos/groups`, { headers }).catch(() => ({ data: { result: [] } }))
-      ]);
+      
+      let usersData = [];
+      let settingsData = { settings: {}, categories: [] };
+      let regosUsersData = [];
+      let regosGroupsData = [];
+      
+      if (role !== 'analytics') {
+        const [usersRes, settingsRes, regosUsersRes, regosGroupsRes] = await Promise.all([
+          axios.get(`${API_URL}/admin/users`, { headers }),
+          axios.get(`${API_URL}/admin/settings`, { headers }),
+          axios.get(`${API_URL}/admin/regos/users`, { headers }).catch(() => ({ data: { result: [] } })),
+          axios.get(`${API_URL}/admin/regos/groups`, { headers }).catch(() => ({ data: { result: [] } }))
+        ]);
+        usersData = usersRes.data;
+        settingsData = settingsRes.data;
+        regosUsersData = regosUsersRes.data?.result || [];
+        regosGroupsData = regosGroupsRes.data?.result || [];
+      } else {
+        const [regosUsersRes, regosGroupsRes] = await Promise.all([
+          axios.get(`${API_URL}/admin/regos/users`, { headers }).catch(() => ({ data: { result: [] } })),
+          axios.get(`${API_URL}/admin/regos/groups`, { headers }).catch(() => ({ data: { result: [] } }))
+        ]);
+        regosUsersData = regosUsersRes.data?.result || [];
+        regosGroupsData = regosGroupsRes.data?.result || [];
+      }
+      
       setData({
-        users: usersRes.data,
-        settings: settingsRes.data.settings,
-        categories: settingsRes.data.categories || []
+        users: usersData,
+        settings: settingsData.settings || {},
+        categories: settingsData.categories || []
       });
-      setRegosUsers(regosUsersRes.data?.result || []);
-      setRegosGroups(regosGroupsRes.data?.result || []);
+      setRegosUsers(regosUsersData);
+      setRegosGroups(regosGroupsData);
       setLoading(false);
     } catch (err) {
       if (err.response?.status === 401) {
@@ -194,12 +221,14 @@ const AdminDashboard = ({ token, setToken }) => {
 
   return (
     <div className="min-h-screen bg-[#02130e] text-slate-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-[98%] xl:max-w-[1600px] mx-auto space-y-6">
         <header className="flex justify-between items-center bg-[#072f23] p-6 rounded-2xl border border-[#0e4b39]">
           <div className="flex items-center gap-6">
             <h1 className="text-2xl font-bold text-emerald-50">Admin Dashboard</h1>
             <div className="flex gap-2">
-              <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg font-semibold transition ${activeTab === 'users' ? 'bg-emerald-600 text-white' : 'bg-[#041f17] text-emerald-300 hover:bg-[#065f46]'}`}>Foydalanuvchilar</button>
+              {role !== 'analytics' && (
+                <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg font-semibold transition ${activeTab === 'users' ? 'bg-emerald-600 text-white' : 'bg-[#041f17] text-emerald-300 hover:bg-[#065f46]'}`}>Foydalanuvchilar</button>
+              )}
               <button onClick={() => setActiveTab('stats')} className={`px-4 py-2 rounded-lg font-semibold transition ${activeTab === 'stats' ? 'bg-emerald-600 text-white' : 'bg-[#041f17] text-emerald-300 hover:bg-[#065f46]'}`}>Sotuv Tahlili</button>
             </div>
           </div>
@@ -523,3 +552,6 @@ const AdminDashboard = ({ token, setToken }) => {
 };
 
 export default AdminDashboard;
+
+
+
