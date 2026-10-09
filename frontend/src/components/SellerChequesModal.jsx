@@ -273,31 +273,59 @@ export default function SellerChequesModal({
                   </div>
                 ) : chequeItems.length > 0 ? (
                   <div className="divide-y divide-inherit overflow-hidden rounded-xl border border-inherit">
-                    {chequeItems.map((it, idx) => {
-                      const itemName =
-                        it.item?.name || it.name || it.item_name || "Mahsulot";
-                      const qty = Number(it.quantity || 1);
-                      const price = Number(it.price || it.cost || 0);
-                      const total = Number(it.amount || it.total || qty * price);
-                      const isCanceled = qty < 0;
+                    {(() => {
+                      const canceledIndices = new Set();
+                      const positiveMap = new Map();
+                      chequeItems.forEach((it, i) => {
+                        const qty = Number(it.quantity || 1);
+                        if (qty > 0) {
+                          const name = it.item?.name || it.name || it.item_name || "Mahsulot";
+                          const price = Math.abs(Number(it.price || it.cost || 0));
+                          const key = `${name}_${price}`;
+                          if (!positiveMap.has(key)) positiveMap.set(key, []);
+                          positiveMap.get(key).push(i);
+                        }
+                      });
+                      chequeItems.forEach((it, i) => {
+                        const qty = Number(it.quantity || 1);
+                        if (qty < 0) {
+                          canceledIndices.add(i);
+                          const name = it.item?.name || it.name || it.item_name || "Mahsulot";
+                          const price = Math.abs(Number(it.price || it.cost || 0));
+                          const key = `${name}_${price}`;
+                          const posList = positiveMap.get(key);
+                          if (posList && posList.length > 0) {
+                            canceledIndices.add(posList.pop());
+                          }
+                        }
+                      });
 
-                      return (
-                        <div
-                          key={it.uuid || idx}
-                          className={`p-3 flex items-center justify-between gap-3 text-xs ${isCanceled ? "opacity-60 line-through" : ""}`}
-                        >
-                          <div>
-                            <p className={`font-semibold ${isCanceled ? "text-rose-400" : ""}`}>{itemName}</p>
-                            <p className="opacity-60 text-[11px] mt-0.5">
-                              {qty} dona × {formatMoney(price, "UZS")}
-                            </p>
+                      return chequeItems.map((it, idx) => {
+                        const itemName =
+                          it.item?.name || it.name || it.item_name || "Mahsulot";
+                        const qty = Number(it.quantity || 1);
+                        const price = Number(it.price || it.cost || 0);
+                        const total = Number(it.amount || it.total || qty * price);
+                        const isCanceled = canceledIndices.has(idx);
+
+                        return (
+                          <div
+                            key={it.uuid || idx}
+                            className={`p-3 flex items-center justify-between gap-3 text-xs ${isCanceled ? "opacity-60 line-through" : ""}`}
+                          >
+                            <div>
+                              <p className={`font-semibold ${isCanceled ? "text-rose-400" : ""}`}>{itemName}</p>
+                              <p className="opacity-60 text-[11px] mt-0.5">
+                                {qty} dona × {formatMoney(price, "UZS")}
+                              </p>
+                            </div>
+                            <span className={`font-bold ${isCanceled ? "text-rose-400" : "text-emerald-400"}`}>
+                              {formatMoney(total, "UZS")}
+                            </span>
                           </div>
-                          <span className={`font-bold ${isCanceled ? "text-rose-400" : "text-emerald-400"}`}>
-                            {formatMoney(total, "UZS")}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                    })()}
                   </div>
                 ) : (
                   <div className="py-6 text-center opacity-60 text-xs">

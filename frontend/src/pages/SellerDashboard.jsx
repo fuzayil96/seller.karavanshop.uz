@@ -662,38 +662,66 @@ const SellerDashboard = () => {
                 </div>
               ) : chequeItems.length > 0 ? (
                 <div className="space-y-3">
-                  {chequeItems.map((it, idx) => {
-                    const isCanceled = Number(it.quantity || 1) < 0;
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex justify-between items-center border-b border-emerald-500/10 pb-3 last:border-0 last:pb-0 ${isCanceled ? "opacity-60 line-through" : ""}`}
-                      >
-                        <div>
-                          <p className={`text-sm font-medium ${isCanceled ? "text-red-300" : "text-emerald-50"}`}>
-                            {it.item?.name ||
-                              it.name ||
-                              it.item_name ||
-                              "Mahsulot"}
-                          </p>
-                          <p className="text-[11px] text-emerald-100/50 mt-0.5">
-                            {Number(it.quantity || 1)} dona ×{" "}
-                            {Number(it.price || it.cost || 0).toLocaleString(
-                              "uz-UZ",
-                            )}{" "}
-                            UZS
-                          </p>
+                  {(() => {
+                    const canceledIndices = new Set();
+                    const positiveMap = new Map();
+                    chequeItems.forEach((it, i) => {
+                      const qty = Number(it.quantity || 1);
+                      if (qty > 0) {
+                        const name = it.item?.name || it.name || it.item_name || "Mahsulot";
+                        const price = Math.abs(Number(it.price || it.cost || 0));
+                        const key = `${name}_${price}`;
+                        if (!positiveMap.has(key)) positiveMap.set(key, []);
+                        positiveMap.get(key).push(i);
+                      }
+                    });
+                    chequeItems.forEach((it, i) => {
+                      const qty = Number(it.quantity || 1);
+                      if (qty < 0) {
+                        canceledIndices.add(i);
+                        const name = it.item?.name || it.name || it.item_name || "Mahsulot";
+                        const price = Math.abs(Number(it.price || it.cost || 0));
+                        const key = `${name}_${price}`;
+                        const posList = positiveMap.get(key);
+                        if (posList && posList.length > 0) {
+                          canceledIndices.add(posList.pop());
+                        }
+                      }
+                    });
+
+                    return chequeItems.map((it, idx) => {
+                      const isCanceled = canceledIndices.has(idx);
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex justify-between items-center border-b border-emerald-500/10 pb-3 last:border-0 last:pb-0 ${isCanceled ? "opacity-60 line-through" : ""}`}
+                        >
+                          <div>
+                            <p className={`text-sm font-medium ${isCanceled ? "text-red-300" : "text-emerald-50"}`}>
+                              {it.item?.name ||
+                                it.name ||
+                                it.item_name ||
+                                "Mahsulot"}
+                            </p>
+                            <p className="text-[11px] text-emerald-100/50 mt-0.5">
+                              {Number(it.quantity || 1)} dona ×{" "}
+                              {Number(it.price || it.cost || 0).toLocaleString(
+                                "uz-UZ",
+                              )}{" "}
+                              UZS
+                            </p>
+                          </div>
+                          <div className={`text-sm font-bold ${isCanceled ? "text-red-400" : "text-emerald-400"}`}>
+                            {Number(
+                              it.amount ||
+                                it.total ||
+                                Number(it.quantity || 1) * Number(it.price || 0),
+                            ).toLocaleString("uz-UZ")}
+                          </div>
                         </div>
-                        <div className={`text-sm font-bold ${isCanceled ? "text-red-400" : "text-emerald-400"}`}>
-                          {Number(
-                            it.amount ||
-                              it.total ||
-                              Number(it.quantity || 1) * Number(it.price || 0),
-                          ).toLocaleString("uz-UZ")}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               ) : (
                 <div className="text-center text-emerald-100/50 text-sm py-6">
