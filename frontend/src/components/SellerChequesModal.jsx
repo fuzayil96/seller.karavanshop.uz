@@ -274,39 +274,40 @@ export default function SellerChequesModal({
                 ) : chequeItems.length > 0 ? (
                   <div className="divide-y divide-inherit overflow-hidden rounded-xl border border-inherit">
                     {(() => {
-                      const canceledIndices = new Set();
-                      const positiveMap = new Map();
-                      chequeItems.forEach((it, i) => {
+                      const groups = {};
+                      chequeItems.forEach(it => {
+                        const name = it.item?.name || it.name || it.item_name || "Mahsulot";
+                        const price = Number(it.price || it.cost || 0);
+                        const key = `${name}_${price}`;
+                        if (!groups[key]) groups[key] = { name, price, pos: 0, neg: 0, original: it };
                         const qty = Number(it.quantity || 1);
-                        if (qty > 0) {
-                          const name = it.item?.name || it.name || it.item_name || "Mahsulot";
-                          const price = Math.abs(Number(it.price || it.cost || 0));
-                          const key = `${name}_${price}`;
-                          if (!positiveMap.has(key)) positiveMap.set(key, []);
-                          positiveMap.get(key).push(i);
-                        }
+                        if (qty > 0) groups[key].pos += qty;
+                        else groups[key].neg += Math.abs(qty);
                       });
-                      chequeItems.forEach((it, i) => {
-                        const qty = Number(it.quantity || 1);
-                        if (qty < 0) {
-                          canceledIndices.add(i);
-                          const name = it.item?.name || it.name || it.item_name || "Mahsulot";
-                          const price = Math.abs(Number(it.price || it.cost || 0));
-                          const key = `${name}_${price}`;
-                          const posList = positiveMap.get(key);
-                          if (posList && posList.length > 0) {
-                            canceledIndices.add(posList.pop());
-                          }
+
+                      const merged = [];
+                      Object.values(groups).forEach(g => {
+                        const canceled = Math.min(g.pos, g.neg);
+                        const active = g.pos - canceled;
+                        const pureReturn = g.neg - canceled;
+
+                        if (active > 0) {
+                          merged.push({ ...g.original, quantity: active, amount: active * g.price, _isCanceled: false });
+                        }
+                        if (canceled > 0) {
+                          merged.push({ ...g.original, quantity: canceled, amount: canceled * g.price, _isCanceled: true });
+                        }
+                        if (pureReturn > 0) {
+                          merged.push({ ...g.original, quantity: -pureReturn, amount: -pureReturn * g.price, _isCanceled: true });
                         }
                       });
 
-                      return chequeItems.map((it, idx) => {
-                        const itemName =
-                          it.item?.name || it.name || it.item_name || "Mahsulot";
-                        const qty = Number(it.quantity || 1);
+                      return merged.map((it, idx) => {
+                        const itemName = it.item?.name || it.name || it.item_name || "Mahsulot";
+                        const qty = Number(it.quantity);
                         const price = Number(it.price || it.cost || 0);
-                        const total = Number(it.amount || it.total || qty * price);
-                        const isCanceled = canceledIndices.has(idx);
+                        const total = Number(it.amount);
+                        const isCanceled = it._isCanceled;
 
                         return (
                           <div
