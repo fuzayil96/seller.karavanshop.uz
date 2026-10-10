@@ -166,6 +166,26 @@ router.post('/admin/users/:telegramId', verifyAdmin, requireSuperAdmin, async (r
   res.json({ success: userUpdated });
 });
 
+// Admin delete user completely
+router.delete('/admin/users/:telegramId', verifyAdmin, requireSuperAdmin, async (req, res) => {
+  const { telegramId } = req.params;
+  let userDeleted = false;
+  
+  updateDb(db => {
+    const initialLength = db.users.length;
+    db.users = db.users.filter(u => u.telegramId !== parseInt(telegramId));
+    if (db.users.length !== initialLength) {
+      userDeleted = true;
+    }
+  });
+
+  if (userDeleted) {
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'User not found' });
+  }
+});
+
 // Admin send message
 router.post('/admin/message', verifyAdmin, requireSuperAdmin, async (req, res) => {
   const { telegramId, message } = req.body; // telegramId = 'all' for bulk

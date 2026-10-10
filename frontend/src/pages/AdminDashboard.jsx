@@ -30,6 +30,7 @@ const AdminDashboard = ({ token, setToken }) => {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'telegramId', direction: 'desc' });
+  const [statusFilter, setStatusFilter] = useState([]);
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -41,6 +42,9 @@ const AdminDashboard = ({ token, setToken }) => {
 
   const sortedAndFilteredUsers = React.useMemo(() => {
     let users = [...data.users];
+    if (statusFilter.length > 0) {
+      users = users.filter(u => statusFilter.includes(u.status));
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       users = users.filter(u => 
@@ -61,8 +65,20 @@ const AdminDashboard = ({ token, setToken }) => {
       return 0;
     });
     return users;
-  }, [data.users, searchQuery, sortConfig]);
+  }, [data.users, searchQuery, sortConfig, statusFilter]);
   
+  const statusCounts = React.useMemo(() => {
+    const counts = { pending: 0, approved: 0, banned: 0 };
+    data.users.forEach(u => {
+      if (counts[u.status] !== undefined) {
+        counts[u.status]++;
+      } else {
+        counts[u.status] = 1;
+      }
+    });
+    return counts;
+  }, [data.users]);
+
   const navigate = useNavigate();
 
   const fetchAdminData = async () => {
@@ -156,6 +172,18 @@ const AdminDashboard = ({ token, setToken }) => {
         sellerId: '',
         status: 'banned'
       }, { headers });
+      setEditingUser(null);
+      fetchAdminData();
+    } catch (err) {
+      alert("Xatolik yuz berdi");
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!window.confirm("Haqiqatan ham bu foydalanuvchini bazadan butunlay o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi!")) return;
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.delete(`${API_URL}/admin/users/${editingUser.telegramId}`, { headers });
       setEditingUser(null);
       fetchAdminData();
     } catch (err) {
@@ -370,23 +398,67 @@ const AdminDashboard = ({ token, setToken }) => {
           {/* Users Section */}
           <div className="lg:col-span-2">
             <div className="bg-[#072f23] p-6 rounded-2xl border border-[#0e4b39]">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-emerald-300">Foydalanuvchilar</h3>
-                <div className="flex gap-4">
-                  <input
-                    type="text"
-                    placeholder="Qidirish..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-[#041f17] border border-emerald-500/30 rounded-lg p-2 text-emerald-50 text-sm focus:outline-none"
-                  />
-                  <button onClick={openMassMessageModal} className="flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 px-4 py-2 rounded-lg border border-blue-500/30 text-sm transition-colors">
-                    <MessageCircle className="w-4 h-4" />
-                    Ommaviy xabar
-                  </button>
-                  <button onClick={fetchAdminData} className="bg-[#041f17] hover:bg-[#065f46] px-4 py-2 rounded-lg border border-emerald-500/30 text-sm">
-                    Yangilash
-                  </button>
+              <div className="flex flex-col gap-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-emerald-300 flex items-center gap-2">
+                    Foydalanuvchilar
+                    <span className="bg-[#041f17] text-emerald-500/80 text-xs px-2 py-1 rounded-md border border-emerald-500/20">
+                      Jami: {data.users.length}
+                    </span>
+                  </h3>
+                  <div className="flex gap-4 items-center">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Qidirish..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-[#041f17] border border-emerald-500/30 rounded-lg p-2 pr-8 text-emerald-50 text-sm focus:outline-none w-64"
+                      />
+                      {searchQuery && (
+                        <button 
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500/50 hover:text-emerald-500 focus:outline-none"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <button onClick={openMassMessageModal} className="flex items-center gap-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 px-4 py-2 rounded-lg border border-blue-500/30 text-sm transition-colors">
+                      <MessageCircle className="w-4 h-4" />
+                      Ommaviy xabar
+                    </button>
+                    <button onClick={fetchAdminData} className="bg-[#041f17] hover:bg-[#065f46] px-4 py-2 rounded-lg border border-emerald-500/30 text-sm">
+                      Yangilash
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-4 items-center mt-2">
+                  <span className="text-emerald-100/70 text-sm font-semibold">Holat bo'yicha filter:</span>
+                  {['pending', 'approved', 'banned'].map(status => (
+                    <label key={status} className="flex items-center gap-2 cursor-pointer bg-[#041f17] px-3 py-1.5 rounded-lg border border-emerald-500/30">
+                      <input 
+                        type="checkbox"
+                        checked={statusFilter.includes(status)}
+                        onChange={() => {
+                          setStatusFilter(prev => 
+                            prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+                          );
+                        }}
+                        className="w-4 h-4 rounded bg-[#041f17] border-emerald-500/30 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-[#072f23]"
+                      />
+                      <span className={`text-sm font-semibold capitalize flex items-center gap-1.5 ${
+                        status === 'approved' ? 'text-emerald-400' :
+                        status === 'banned' ? 'text-red-400' :
+                        'text-yellow-400'
+                      }`}>
+                        {status}
+                        <span className="bg-black/20 px-1.5 py-0.5 rounded text-[11px] leading-none">
+                          {statusCounts[status] || 0}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
               
@@ -502,6 +574,9 @@ const AdminDashboard = ({ token, setToken }) => {
                 </div>
                 <button onClick={handleClearAndBan} className="w-full bg-red-600/20 hover:bg-red-600/40 text-red-400 py-2.5 rounded-lg border border-red-500/30 transition-colors font-semibold">
                   Ishdan bo'shatish (Tozalash va bloklash)
+                </button>
+                <button onClick={handleDeleteUser} className="w-full bg-red-900/40 hover:bg-red-800/60 text-red-300 py-2.5 rounded-lg border border-red-700/50 transition-colors font-semibold mt-2">
+                  Bazadan butunlay o'chirish
                 </button>
               </div>
             </div>
